@@ -1,0 +1,7 @@
+{
+  "name": "flock-p5js",
+  "version": "1.0.0",
+  "main": "index.js",
+  "author": "Marcin Moch <marcio.moch@gmail.com>",
+  "license": "MIT"
+}
