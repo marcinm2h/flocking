@@ -1,16 +1,27 @@
 import p5 from "p5";
-// https://discourse.processing.org/t/how-do-i-import-p5-via-npm/11543
+import { Boid } from './boid';
 
-const sketch = (s) => {
+let flock = [];
+let alignSlider, cohesionSlider, separationSlider;
+
+const sketch = s => {
   s.setup = () => {
-    s.createCanvas(100, 100);
-    s.createSlider(0, 2, 1.5, 0.1);
+    s.createCanvas(640, 480);
+    alignSlider = s.createSlider(0, 5, 1, 0.1);
+    cohesionSlider = s.createSlider(0, 5, 1, 0.1);
+    separationSlider = s.createSlider(0, 5, 1, 0.1);
+    Object.assign(s, { alignSlider, cohesionSlider, separationSlider });
+    flock = Array(100).fill().map(() => new Boid(s));
   };
 
   s.draw = () => {
-    console.log(s.width);
-    s.background(100,255, 30);
-    s.circle(10, 10, 10);
+    s.background(51);
+    flock.forEach((boid) => {
+      boid.edges();
+      boid.flock(flock);
+      boid.update();
+      Boid.render(boid, s);
+    })
   };
 };
 
