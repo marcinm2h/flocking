@@ -8,7 +8,12 @@
     "p5": "^1.0.0",
     "parcel-bundler": "^1.12.4"
   },
+  "devDependencies": {
+    "http-server": "^0.12.3"
+  },
   "scripts": {
-    "start": "npx parcel index.html"
+    "start": "npx parcel index.html",
+    "build": "npx parcel build index.html",
+    "serve": "npx http-server dist/"
   }
 }
