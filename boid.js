@@ -9,6 +9,7 @@ export class Boid {
       .setMag(random(2, 4)); // losowa długość wektora z przedzialu
     this.acceleration = Vector(); // wektor przyspieszenia
     this.maxForce = 0.2;
+    this.maxRepelForce = 1;
     this.maxSpeed = 4;
     this.neighbourhoodRadius = 50;
   }
@@ -29,17 +30,13 @@ export class Boid {
   }
 
   distance(other) {
-    return distance(
-      this.position.x,
-      this.position.y,
-      other.position.x,
-      other.position.y
-    );
+    return distance(this.position.x, this.position.y, other.x, other.y);
   }
 
   findNeighbours(boids) {
     return boids.filter(
-      (boid) => boid !== this && this.distance(boid) < this.neighbourhoodRadius
+      (boid) =>
+        boid !== this && this.distance(boid.position) < this.neighbourhoodRadius
     );
   }
 
@@ -85,7 +82,7 @@ export class Boid {
     }
 
     let separationVector = neighbours.reduce((acc, boid) => {
-      const distance = this.distance(boid);
+      const distance = this.distance(boid.position);
       let diff = Vector.sub(this.position, boid.position); // wektor roznica pozycji boida i jego sasiada
       diff = Vector.div(diff, distance ** 2); // sila odwrotnie proporcjonalna do odleglosci
       return Vector.add(acc, diff);
@@ -112,39 +109,54 @@ export class Boid {
     cohesion = Vector.mult(cohesion, cohesionMultiplier);
     separation = Vector.mult(separation, separationMultiplier);
 
-    this.acceleration = Vector.add(alignment, cohesion, separation);
+    this.acceleration = Vector.add(
+      this.acceleration,
+      alignment,
+      cohesion,
+      separation
+    );
+  }
+
+  repealment(obstacle, { obstacleRadius = 60 } = {}) {
+    let repelVector = Vector();
+    if (this.distance(obstacle) < obstacleRadius) {
+      repelVector = Vector.sub(obstacle, this.position);
+      repelVector = Vector.normalize(repelVector);
+      repelVector = Vector.mult(repelVector, this.maxRepelForce);
+    }
+
+    return repelVector;
+  }
+
+  repel(obstacles) {
+    const repelVector = obstacles.reduce(
+      (acc, obstacle) => Vector.sub(acc, this.repealment(obstacle)),
+      Vector()
+    );
+    this.acceleration = Vector.add(this.acceleration, repelVector);
   }
 
   update() {
     this.position = Vector.add(this.position, this.velocity); // ruch o predkosc
     this.velocity = Vector.add(this.velocity, this.acceleration); // zmiana predkosci o przyspieszenie
     this.velocity = Vector.limit(this.velocity, this.maxSpeed); // ograniczenie do max predkosci
+    this.acceleration = Vector(); // zerowanie co krok
     this.edges();
   }
 }
 
-Boid.createFlock = (length, ctx) => {
-  const flock = Array(length)
+Boid.createFlock = (length, ctx) =>
+  Array(length)
     .fill()
     .map(() => new Boid(ctx));
-
-  return {
-    update: () =>
-      flock.forEach((boid) => {
-        boid.flock(flock);
-        boid.update();
-        Boid.render(boid, ctx);
-      }),
-  };
-};
 
 Boid.render = (() => {
   const colors = new Map();
   return (boid, ctx) => {
-    // ctx.stroke(129,10,12, 10);
-    // ctx.fill(129,10,12, 10);
+    // ctx.stroke(1,1,1, 10);
+    // ctx.fill(255,255,255, 10);
     // ctx.strokeWeight(1);
-    // ctx.circle(boid.position.x, boid.position.y, boid.neighbourhoodRadiu * 2);
+    // ctx.circle(boid.position.x, boid.position.y, boid.neighbourhoodRadius * 2);
     const color = colors.has(boid)
       ? colors.get(boid)
       : (() => {

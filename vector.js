@@ -11,6 +11,8 @@ Vector.add = (...args) =>
 
 Vector.setMagnitude = (...args) => p5.Vector.prototype.setMag.call(...args);
 
+Vector.normalize = (...args) => p5.Vector.prototype.normalize.call(...args);
+
 Vector.div = (...args) => p5.Vector.prototype.div.call(...args);
 
 Vector.mult = (...args) => p5.Vector.prototype.mult.call(...args);

@@ -21,8 +21,14 @@ const sketch = (s) => {
   };
 
   s.draw = () => {
-    s.background(50);
-    flock.update();
+    s.background(242, 236, 216);
+
+    flock.forEach((boid) => {
+      boid.flock(flock);
+      boid.repel([s.createVector(s.mouseX, s.mouseY)]);
+      boid.update();
+      Boid.render(boid, s);
+    });
   };
 };
 
