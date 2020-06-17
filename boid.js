@@ -128,12 +128,21 @@ export class Boid {
   }
 }
 
-Boid.render = (boid, ctx) => {
-  // ctx.stroke(129,10,12, 10);
-  // ctx.fill(129,10,12, 10);
-  // ctx.strokeWeight(1);
-  // ctx.circle(boid.position.x, boid.position.y, boid.perceptionRadius * 2);
-  ctx.stroke(200);
-  ctx.strokeWeight(8);
-  ctx.point(boid.position.x, boid.position.y);
-};
+Boid.render = (() => {
+  const colors = new Map();
+  return (boid, ctx) => {
+    // ctx.stroke(129,10,12, 10);
+    // ctx.fill(129,10,12, 10);
+    // ctx.strokeWeight(1);
+    // ctx.circle(boid.position.x, boid.position.y, boid.perceptionRadius * 2);
+    const color = colors.has(boid) ? colors.get(boid) : (() => {
+      const randomColor = [ctx.random(0,255), ctx.random(0,255), ctx.random(0,255)];
+      colors.set(boid, randomColor);
+      return randomColor;
+    })();
+    
+    ctx.stroke(...color);
+    ctx.strokeWeight(8);
+    ctx.point(boid.position.x, boid.position.y);
+  };
+})();
