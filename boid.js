@@ -1,12 +1,5 @@
 import p5 from "p5";
-
-// TODO: użyć 'vectors'
-const Vector = (...args) => new p5.Vector(...args);
-Vector.random2D = (...args) => p5.Vector.random2D(...args);
-Vector.add = (...args) =>
-  args.reduce((acc, curr) => {
-    return p5.Vector.prototype.add.call(acc, curr);
-  });
+import { Vector } from './vector';
 
 const random = (...args) => p5.prototype.random(...args);
 const distance = (...args) => p5.prototype.dist(...args);
@@ -50,7 +43,6 @@ export class Boid {
   }
 
   findNeighbours(boids) {
-    // FIXME: przeniesc do Flock
     return boids.filter(
       (boid) => boid !== this && this.distance(boid) < this.perceptionRadius
     );
