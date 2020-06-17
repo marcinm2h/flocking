@@ -1,8 +1,5 @@
-import p5 from "p5";
-import { Vector } from './vector';
-
-const random = (...args) => p5.prototype.random(...args);
-const distance = (...args) => p5.prototype.dist(...args);
+import { distance, random } from "./math";
+import { Vector } from "./vector";
 
 export class Boid {
   constructor(ctx) {
@@ -11,15 +8,13 @@ export class Boid {
     this.velocity = Vector.random2D() // wektor predkosci
       .setMag(random(2, 4)); // losowa długość wektora z przedzialu
     this.acceleration = Vector(); // wektor przyspieszenia
-    // TODO: kontrolowane przez slidery
     this.maxForce = 0.2;
     this.maxSpeed = 4;
-    this.perceptionRadius = 50;
+    this.neighbourhoodRadius = 50;
   }
 
   edges() {
     // jesli boid wypada poza obszar -> przeniesienie go na druga strone
-    //TODO: przenieść do klasy Flock || odbijanie sie od krawedzi
     const { width, height } = this.ctx;
     if (this.position.x > width) {
       this.position.x = 0;
@@ -44,7 +39,7 @@ export class Boid {
 
   findNeighbours(boids) {
     return boids.filter(
-      (boid) => boid !== this && this.distance(boid) < this.perceptionRadius
+      (boid) => boid !== this && this.distance(boid) < this.neighbourhoodRadius
     );
   }
 
@@ -54,13 +49,13 @@ export class Boid {
       return Vector();
     }
 
-    const alignVector = neighbours.reduce((acc, boid) => {
+    let alignVector = neighbours.reduce((acc, boid) => {
       return Vector.add(acc, boid.velocity);
     }, Vector());
-    alignVector.div(neighbours.length); // srednia predkosc boidow
-    alignVector.setMag(this.maxSpeed); // ustawienie predkosci na maksymalna w momencie znalezienia sie w zasiegu
-    alignVector.sub(this.velocity); // docelowa predkosc = aktualna - srednia
-    alignVector.limit(this.maxForce); // nie wieksza niz max
+    alignVector = Vector.div(alignVector, neighbours.length); // srednia
+    alignVector = Vector.setMagnitude(alignVector, this.maxSpeed); // ustawienie dlugosci na max
+    alignVector = Vector.sub(alignVector, this.velocity); // docelowa predkosc = aktualna - srednia
+    alignVector = Vector.limit(alignVector, this.maxForce); // nie wieksza sila niz max
 
     return alignVector;
   }
@@ -71,14 +66,14 @@ export class Boid {
       return Vector();
     }
 
-    const cohesionVector = neighbours.reduce((acc, boid) => {
+    let cohesionVector = neighbours.reduce((acc, boid) => {
       return Vector.add(acc, boid.position);
     }, Vector());
-    cohesionVector.div(neighbours.length); // srednia predkosc boidow
-    cohesionVector.sub(this.position); // - pozycja
-    cohesionVector.setMag(this.maxSpeed); // ustawienie predkosci na maksymalna w momencie znalezienia sie w zasiegu
-    cohesionVector.sub(this.velocity); // - predkosc
-    cohesionVector.limit(this.maxForce);
+    cohesionVector = Vector.div(cohesionVector, neighbours.length); // srednia
+    cohesionVector = Vector.sub(cohesionVector, this.position); // minus pozycja
+    cohesionVector = Vector.setMagnitude(cohesionVector, this.maxSpeed); // ustawienie dlugosci na maksymalna
+    cohesionVector = Vector.sub(cohesionVector, this.velocity); // minus predkosc
+    cohesionVector = Vector.limit(cohesionVector, this.maxForce); // nie wieksza sila niz max
 
     return cohesionVector;
   }
@@ -89,28 +84,28 @@ export class Boid {
       return Vector();
     }
 
-    const separationVector = neighbours.reduce((acc, boid) => {
+    let separationVector = neighbours.reduce((acc, boid) => {
       const distance = this.distance(boid);
-      const diff = p5.Vector.sub(this.position, boid.position); // wektor roznica pozycji boida i jego sasiada
-      diff.div(distance ** 2); // odwrotnie proporcjonalna do odleglosci - wieksza odleglosc - mniejsza sila
+      let diff = Vector.sub(this.position, boid.position); // wektor roznica pozycji boida i jego sasiada
+      diff = Vector.div(diff, distance ** 2); // sila odwrotnie proporcjonalna do odleglosci
       return Vector.add(acc, diff);
     }, Vector());
-    separationVector.div(neighbours.length); // srednia
-    separationVector.setMag(this.maxSpeed); // normalizacja
-    separationVector.sub(this.velocity); // normalizacja
-    separationVector.limit(this.maxForce); // normalizacja
+    separationVector = Vector.div(separationVector, neighbours.length); // srednia
+    separationVector = Vector.setMagnitude(separationVector, this.maxSpeed); // ustawienie dlugosci na max
+    separationVector = Vector.sub(separationVector, this.velocity); // minus predkosc
+    separationVector = Vector.limit(separationVector, this.maxForce); // nie wieksza niz sila max
 
     return separationVector;
   }
 
   flock(boids) {
-    const alignment = this.align(boids);
-    const cohesion = this.cohesion(boids);
-    const separation = this.separation(boids);
+    let alignment = this.align(boids);
+    let cohesion = this.cohesion(boids);
+    let separation = this.separation(boids);
 
-    alignment.mult(this.ctx.alignSlider.value());
-    cohesion.mult(this.ctx.cohesionSlider.value());
-    separation.mult(this.ctx.separationSlider.value());
+    alignment = Vector.mult(alignment, this.ctx.alignSlider.value());
+    cohesion = Vector.mult(cohesion, this.ctx.cohesionSlider.value());
+    separation = Vector.mult(separation, this.ctx.separationSlider.value());
 
     this.acceleration = Vector.add(alignment, cohesion, separation);
   }
@@ -118,7 +113,8 @@ export class Boid {
   update() {
     this.position = Vector.add(this.position, this.velocity); // ruch o predkosc
     this.velocity = Vector.add(this.velocity, this.acceleration); // zmiana predkosci o przyspieszenie
-    this.velocity.limit(this.maxSpeed);
+    this.velocity = Vector.limit(this.velocity, this.maxSpeed); // ograniczenie do max predkosci
+    this.edges();
   }
 }
 
@@ -128,7 +124,7 @@ Boid.render = (() => {
     // ctx.stroke(129,10,12, 10);
     // ctx.fill(129,10,12, 10);
     // ctx.strokeWeight(1);
-    // ctx.circle(boid.position.x, boid.position.y, boid.perceptionRadius * 2);
+    // ctx.circle(boid.position.x, boid.position.y, boid.neighbourhoodRadiu * 2);
     const color = colors.has(boid)
       ? colors.get(boid)
       : (() => {

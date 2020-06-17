@@ -11,13 +11,12 @@ const sketch = s => {
     cohesionSlider = s.createSlider(0, 5, 1, 0.1);
     separationSlider = s.createSlider(0, 5, 1, 0.1);
     Object.assign(s, { alignSlider, cohesionSlider, separationSlider });
-    flock = Array(100).fill().map(() => new Boid(s));
+    flock = Array(50).fill().map(() => new Boid(s));
   };
 
   s.draw = () => {
     s.background(51);
     flock.forEach((boid) => {
-      boid.edges();
       boid.flock(flock);
       boid.update();
       Boid.render(boid, s);
