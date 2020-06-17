@@ -119,10 +119,12 @@ export class Boid {
 
   repealment(obstacle, { obstacleRadius = 60 } = {}) {
     let repelVector = Vector();
-    if (this.distance(obstacle) < obstacleRadius) {
+    const distance = this.distance(obstacle);
+    if (distance < obstacleRadius) {
+      const scale = Math.max(1 / Math.sqrt(distance), 0.4); // proporcjonalnie im blizej tym z wieksza sila ucieka
       repelVector = Vector.sub(obstacle, this.position);
       repelVector = Vector.normalize(repelVector);
-      repelVector = Vector.mult(repelVector, this.maxRepelForce);
+      repelVector = Vector.mult(repelVector, this.maxRepelForce * scale);
     }
 
     return repelVector;
@@ -164,9 +166,15 @@ Boid.render = (() => {
           colors.set(boid, randomColor);
           return randomColor;
         })();
-
+    // https://p5js.org/reference/#/p5.Vector/magSq
+    ctx.push();
     ctx.stroke(...color);
-    ctx.strokeWeight(8);
-    ctx.point(boid.position.x, boid.position.y);
+    ctx.fill(...color);
+    ctx.translate(boid.position.x, boid.position.y);
+    ctx.rotate(boid.velocity.heading());
+    let size = 7;
+    ctx.translate(boid.velocity.mag() - size, 0);
+    ctx.triangle(0, size / 2, 0, -size / 2, size, 0);
+    ctx.pop();
   };
 })();
