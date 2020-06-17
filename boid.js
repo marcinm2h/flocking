@@ -1,15 +1,24 @@
 import p5 from "p5";
 
+// TODO: użyć 'vectors'
+const Vector = (...args) => new p5.Vector(...args);
+Vector.random2D = (...args) => p5.Vector.random2D(...args);
+Vector.add = (...args) =>
+  args.reduce((acc, curr) => {
+    return p5.Vector.prototype.add.call(acc, curr);
+  });
+
+const random = (...args) => p5.prototype.random(...args);
+const distance = (...args) => p5.prototype.dist(...args);
+
 export class Boid {
   constructor(ctx) {
     this.ctx = ctx;
-    this.position = ctx.createVector(
-      ctx.random(ctx.width),
-      ctx.random(ctx.height)
-    ); // losowa pozycja
-    this.velocity = p5.Vector.random2D() // wektor predkosci
-      .setMag(ctx.random(2, 4)); // losowa długość wektora z przedzialu
-    this.acceleration = ctx.createVector(); // wektor przyspieszenia
+    this.position = Vector(random(ctx.width), random(ctx.height)); // losowa pozycja
+    this.velocity = Vector.random2D() // wektor predkosci
+      .setMag(random(2, 4)); // losowa długość wektora z przedzialu
+    this.acceleration = Vector(); // wektor przyspieszenia
+    // TODO: kontrolowane przez slidery
     this.maxForce = 0.2;
     this.maxSpeed = 4;
     this.perceptionRadius = 50;
@@ -32,7 +41,7 @@ export class Boid {
   }
 
   distance(other) {
-    return this.ctx.dist(
+    return distance(
       this.position.x,
       this.position.y,
       other.position.x,
@@ -50,59 +59,56 @@ export class Boid {
   align(boids) {
     const neighbours = this.findNeighbours(boids);
     if (neighbours.length === 0) {
-      return this.ctx.createVector();
+      return Vector();
     }
 
-    const steeringForce = neighbours.reduce((acc, boid) => {
-      return acc.add(boid.velocity);
-    }, this.ctx.createVector());
+    const alignVector = neighbours.reduce((acc, boid) => {
+      return Vector.add(acc, boid.velocity);
+    }, Vector());
+    alignVector.div(neighbours.length); // srednia predkosc boidow
+    alignVector.setMag(this.maxSpeed); // ustawienie predkosci na maksymalna w momencie znalezienia sie w zasiegu
+    alignVector.sub(this.velocity); // docelowa predkosc = aktualna - srednia
+    alignVector.limit(this.maxForce); // nie wieksza niz max
 
-    steeringForce.div(neighbours.length); // srednia predkosc boidow
-    steeringForce.setMag(this.maxSpeed); // ustawienie predkosci na maksymalna w momencie znalezienia sie w zasiegu
-    steeringForce.sub(this.velocity); // docelowa predkosc = aktualna - srednia
-    steeringForce.limit(this.maxForce); // nie wieksza niz max
-
-    return steeringForce;
+    return alignVector;
   }
 
   cohesion(boids) {
     const neighbours = this.findNeighbours(boids);
     if (neighbours.length === 0) {
-      return this.ctx.createVector();
+      return Vector();
     }
 
-    const steeringForce = neighbours.reduce((acc, boid) => {
-      return acc.add(boid.position);
-    }, this.ctx.createVector());
+    const cohesionVector = neighbours.reduce((acc, boid) => {
+      return Vector.add(acc, boid.position);
+    }, Vector());
+    cohesionVector.div(neighbours.length); // srednia predkosc boidow
+    cohesionVector.sub(this.position); // - pozycja
+    cohesionVector.setMag(this.maxSpeed); // ustawienie predkosci na maksymalna w momencie znalezienia sie w zasiegu
+    cohesionVector.sub(this.velocity); // - predkosc
+    cohesionVector.limit(this.maxForce);
 
-    steeringForce.div(neighbours.length); // srednia predkosc boidow
-    steeringForce.sub(this.position); // - pozycja
-    steeringForce.setMag(this.maxSpeed); // ustawienie predkosci na maksymalna w momencie znalezienia sie w zasiegu
-    steeringForce.sub(this.velocity); // - predkosc
-    steeringForce.limit(this.maxForce);
-
-    return steeringForce;
+    return cohesionVector;
   }
 
   separation(boids) {
     const neighbours = this.findNeighbours(boids);
     if (neighbours.length === 0) {
-      return this.ctx.createVector();
+      return Vector();
     }
 
-    const steeringForce = neighbours.reduce((acc, boid) => {
+    const separationVector = neighbours.reduce((acc, boid) => {
       const distance = this.distance(boid);
       const diff = p5.Vector.sub(this.position, boid.position); // wektor roznica pozycji boida i jego sasiada
       diff.div(distance ** 2); // odwrotnie proporcjonalna do odleglosci - wieksza odleglosc - mniejsza sila
-      return acc.add(diff);
-    }, this.ctx.createVector());
+      return Vector.add(acc, diff);
+    }, Vector());
+    separationVector.div(neighbours.length); // srednia
+    separationVector.setMag(this.maxSpeed); // normalizacja
+    separationVector.sub(this.velocity); // normalizacja
+    separationVector.limit(this.maxForce); // normalizacja
 
-    steeringForce.div(neighbours.length); // srednia
-    steeringForce.setMag(this.maxSpeed); // normalizacja
-    steeringForce.sub(this.velocity); // normalizacja
-    steeringForce.limit(this.maxForce); // normalizacja
-
-    return steeringForce;
+    return separationVector;
   }
 
   flock(boids) {
@@ -114,16 +120,12 @@ export class Boid {
     cohesion.mult(this.ctx.cohesionSlider.value());
     separation.mult(this.ctx.separationSlider.value());
 
-    this.acceleration = this.ctx
-      .createVector()
-      .add(alignment)
-      .add(cohesion)
-      .add(separation);
+    this.acceleration = Vector.add(alignment, cohesion, separation);
   }
 
   update() {
-    this.position.add(this.velocity); // ruch o predkosc
-    this.velocity.add(this.acceleration); // zmiana predkosci o przyspieszenie
+    this.position = Vector.add(this.position, this.velocity); // ruch o predkosc
+    this.velocity = Vector.add(this.velocity, this.acceleration); // zmiana predkosci o przyspieszenie
     this.velocity.limit(this.maxSpeed);
   }
 }
@@ -135,12 +137,14 @@ Boid.render = (() => {
     // ctx.fill(129,10,12, 10);
     // ctx.strokeWeight(1);
     // ctx.circle(boid.position.x, boid.position.y, boid.perceptionRadius * 2);
-    const color = colors.has(boid) ? colors.get(boid) : (() => {
-      const randomColor = [ctx.random(0,255), ctx.random(0,255), ctx.random(0,255)];
-      colors.set(boid, randomColor);
-      return randomColor;
-    })();
-    
+    const color = colors.has(boid)
+      ? colors.get(boid)
+      : (() => {
+          const randomColor = [random(0, 255), random(0, 255), random(0, 255)];
+          colors.set(boid, randomColor);
+          return randomColor;
+        })();
+
     ctx.stroke(...color);
     ctx.strokeWeight(8);
     ctx.point(boid.position.x, boid.position.y);
