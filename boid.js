@@ -103,9 +103,14 @@ export class Boid {
     let cohesion = this.cohesion(boids);
     let separation = this.separation(boids);
 
-    alignment = Vector.mult(alignment, this.ctx.alignSlider.value());
-    cohesion = Vector.mult(cohesion, this.ctx.cohesionSlider.value());
-    separation = Vector.mult(separation, this.ctx.separationSlider.value());
+    const {
+      alignMultiplier,
+      cohesionMultiplier,
+      separationMultiplier,
+    } = this.ctx.state();
+    alignment = Vector.mult(alignment, alignMultiplier);
+    cohesion = Vector.mult(cohesion, cohesionMultiplier);
+    separation = Vector.mult(separation, separationMultiplier);
 
     this.acceleration = Vector.add(alignment, cohesion, separation);
   }
@@ -117,6 +122,21 @@ export class Boid {
     this.edges();
   }
 }
+
+Boid.createFlock = (length, ctx) => {
+  const flock = Array(length)
+    .fill()
+    .map(() => new Boid(ctx));
+
+  return {
+    update: () =>
+      flock.forEach((boid) => {
+        boid.flock(flock);
+        boid.update();
+        Boid.render(boid, ctx);
+      }),
+  };
+};
 
 Boid.render = (() => {
   const colors = new Map();
